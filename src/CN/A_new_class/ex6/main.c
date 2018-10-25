@@ -355,9 +355,9 @@ PetscErrorCode SetKSP(void *ptr){
 	}
 
     par00 = 1.0 +  ((4.0*user->beta)/h2 + (20.0)/h4)*pardt*dt;
-    par01 = 	+ ((-1.0*user->beta)/h2 + (-8.0)/h4)*pardt*dt;
-    par11 = 	+  ((0.0*user->beta)/h2 +  (2.0)/h4)*pardt*dt;
-    par02 = 	+  ((0.0*user->beta)/h2 +  (1.0)/h4)*pardt*dt;
+    par01 = 0.0	+ ((-1.0*user->beta)/h2 + (-8.0)/h4)*pardt*dt;
+    par11 = 0.0	+  ((0.0*user->beta)/h2 +  (2.0)/h4)*pardt*dt;
+    par02 = 0.0	+  ((0.0*user->beta)/h2 +  (1.0)/h4)*pardt*dt;
    	/*------------------------------------------*/
 	for (j = info.ys; j < ye; ++j) {
 		for(i = info.xs; i<xe; ++i){
@@ -451,8 +451,7 @@ PetscErrorCode CalB(void *ptr){
 			
             GE1_np1_2 += h2*rt_np1_2*rt_np1_2/(eps*eps*4.0);	                /*local E1n+1/2*/
             GE1       += h2*rt_n*rt_n/(eps*eps*4.0);	                        /*local E1*/		
-			GE        += h2*rt_n*rt_n/(eps*eps*4.0)
-			+ h2*phi[j][i]*(phi[j][i]*beta/(eps*eps) - Lapphi)/2.0;    /*local E*/
+			GE        += h2*rt_n*rt_n/(eps*eps*4.0) + h2*phi[j][i]*(phi[j][i]*beta/(eps*eps) - Lapphi)/2.0;    /*local E*/
             GBxphi    += h2*phi[j][i]*aB[j][i];                     /*local B*phi*/
         }
     }
@@ -534,7 +533,7 @@ PetscErrorCode CalC(void *ptr){
 			- 4.0*alocalB[j][i] )/h2;
 			
             aC[j][i] = phi_sum[j][i] + ts->dt*aLapB[j][i]*user->R 
-			+ pardt*ts->dt*aLapB[j][i]*(-1.0/2.0*user->SBxphi);
+			- pardt*ts->dt*aLapB[j][i]*user->SBxphi/2.0;
         }
     }
     
@@ -731,7 +730,7 @@ PetscErrorCode phi_ex(void *ptr){
 			            +  2.0*phi[j+1][i+1] + 2.0*phi[j+1][i-1] + 2.0*phi[j-1][i-1] + 2.0*phi[j-1][i+1]
 			            -  8.0*phi[j+1][i]   - 8.0*phi[j-1][i]   - 8.0*phi[j][i+1]   - 8.0*phi[j][i-1]
 			            + 20.0*phi[j][i]   ) / h4;
-					ax_sum[j][i] = phi[j][i] + LapLapphi*ts->dt/2.0;
+					ax_sum[j][i] = phi[j][i] - LapLapphi*ts->dt/2.0;
         		}
     		}
 	}
