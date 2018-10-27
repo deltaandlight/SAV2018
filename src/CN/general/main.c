@@ -1,6 +1,7 @@
 static char help[] = "We solve the  PFC equation in 2D rectangular domain with\n\
 the SAV method\n\n";
 
+#include <petscksp.h>
 #include <petscdmda.h>
 #include <petscdm.h>
 #include <petsctime.h>
