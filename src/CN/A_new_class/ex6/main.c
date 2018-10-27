@@ -8,7 +8,6 @@ the SAV method\n\n";
 #include <math.h>
 #include <time.h>
 
-
 typedef struct {
 	PetscReal      	dt,curT,endT;
   	PetscInt 		tsmax, tsstep,InterP;
@@ -355,9 +354,9 @@ PetscErrorCode SetKSP(void *ptr){
 	}
 
     par00 = 1.0 +  ((4.0*user->beta)/h2 + (20.0)/h4)*pardt*dt;
-    par01 = 0.0	+ ((-1.0*user->beta)/h2 + (-8.0)/h4)*pardt*dt;
-    par11 = 0.0	+  ((0.0*user->beta)/h2 +  (2.0)/h4)*pardt*dt;
-    par02 = 0.0	+  ((0.0*user->beta)/h2 +  (1.0)/h4)*pardt*dt;
+    par01 = 	+ ((-1.0*user->beta)/h2 + (-8.0)/h4)*pardt*dt;
+    par11 = 	+  ((0.0*user->beta)/h2 +  (2.0)/h4)*pardt*dt;
+    par02 = 	+  ((0.0*user->beta)/h2 +  (1.0)/h4)*pardt*dt;
    	/*------------------------------------------*/
 	for (j = info.ys; j < ye; ++j) {
 		for(i = info.xs; i<xe; ++i){
@@ -451,7 +450,8 @@ PetscErrorCode CalB(void *ptr){
 			
             GE1_np1_2 += h2*rt_np1_2*rt_np1_2/(eps*eps*4.0);	                /*local E1n+1/2*/
             GE1       += h2*rt_n*rt_n/(eps*eps*4.0);	                        /*local E1*/		
-			GE        += h2*rt_n*rt_n/(eps*eps*4.0) + h2*phi[j][i]*(phi[j][i]*beta/(eps*eps) - Lapphi)/2.0;    /*local E*/
+			GE        += h2*rt_n*rt_n/(eps*eps*4.0)
+			+ h2*phi[j][i]*(phi[j][i]*beta/(eps*eps) - Lapphi)/2.0;    /*local E*/
             GBxphi    += h2*phi[j][i]*aB[j][i];                     /*local B*phi*/
         }
     }
@@ -533,7 +533,7 @@ PetscErrorCode CalC(void *ptr){
 			- 4.0*alocalB[j][i] )/h2;
 			
             aC[j][i] = phi_sum[j][i] + ts->dt*aLapB[j][i]*user->R 
-			- pardt*ts->dt*aLapB[j][i]*user->SBxphi/2.0;
+			+ pardt*ts->dt*aLapB[j][i]*(-1.0/2.0*user->SBxphi);
         }
     }
     
@@ -680,10 +680,15 @@ PetscErrorCode phi_ex(void *ptr){
   	AppCtx           *user = (AppCtx*)ptr;
     tsCtx            *ts = user->ts;
   	PetscErrorCode 	 ierr;
-	PetscInt       	 i, j, mx, my, xs, ys, xm, ym, xe, ye;
+	PetscInt       	 i, j, mx, my, xs, ys, xm, ym, xe, ye, Ii, Jj;
 	PetscReal		 h,h2,h4;
 	PetscReal        LapLapphi;
 	Vec				 localx,localxold;
+	PetscScalar		 U; 
+	PetscScalar		eps, beta;
+
+    eps  = user->eps;
+    beta = user->beta;
 	
   	PetscFunctionBeginUser;
 	
@@ -724,7 +729,33 @@ PetscErrorCode phi_ex(void *ptr){
   		default:
   			for (j = ys; j < ye; ++j) {
         		for (i = xs; i < xe; ++i) {
-            		ax_ex[j][i]  = 3.0/2.0*phi[j][i] - 1.0/2.0*alocalxold[j][i];
+            		//ax_ex[j][i]  = 3.0/2.0*phi[j][i] - 1.0/2.0*alocalxold[j][i];
+            		Ii = i;
+					Jj = j;
+					U = (phi[Jj][Ii]*phi[Jj][Ii] - 1.0 - beta) * phi[Jj][Ii]/(eps*eps);
+					ax_ex[j][i] = -4.0*ts->dt*U/h2/2.0;
+					
+					Ii = i+1;
+					Jj = j;
+					U = (phi[Jj][Ii]*phi[Jj][Ii] - 1.0 - beta) * phi[Jj][Ii]/(eps*eps);
+					ax_ex[j][i] += ts->dt*U/h2/2.0;
+					
+					Ii = i-1;
+					Jj = j;
+					U = (phi[Jj][Ii]*phi[Jj][Ii] - 1.0 - beta) * phi[Jj][Ii]/(eps*eps);
+					ax_ex[j][i] += ts->dt*U/h2/2.0;
+					
+					Ii = i;
+					Jj = j+1;
+					U = (phi[Jj][Ii]*phi[Jj][Ii] - 1.0 - beta) * phi[Jj][Ii]/(eps*eps);
+					ax_ex[j][i] += ts->dt*U/h2/2.0;
+					
+					Ii = i;
+					Jj = j-1;
+					U = (phi[Jj][Ii]*phi[Jj][Ii] - 1.0 - beta) * phi[Jj][Ii]/(eps*eps);
+					ax_ex[j][i] += ts->dt*U/h2/2.0;
+					
+            		ax_ex[j][i] += phi[j][i];
             		LapLapphi = 
 			            (  1.0*phi[j+2][i]   + 1.0*phi[j-2][i]   + 1.0*phi[j][i+2]   + 1.0*phi[j][i-2]
 			            +  2.0*phi[j+1][i+1] + 2.0*phi[j+1][i-1] + 2.0*phi[j-1][i-1] + 2.0*phi[j-1][i+1]
@@ -737,6 +768,9 @@ PetscErrorCode phi_ex(void *ptr){
  	
  	ierr = DMDAVecRestoreArray(user->da, localx, &phi);CHKERRQ(ierr);
  	ierr = DMDAVecRestoreArray(user->da, user->x_ex, &ax_ex);CHKERRQ(ierr);
+ 	if(user->curN != 0){
+ 		KSPSolve(user->ksp,user->x_ex,user->x_ex);
+	 }
  	ierr = DMDAVecRestoreArray(user->da, user->x_sum, &ax_sum);CHKERRQ(ierr);
  	ierr = DMRestoreLocalVector(user->da, &localx);
  	ierr = DMRestoreLocalVector(user->da, &localxold);
